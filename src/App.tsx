@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Wallet, Zap, DollarSign, Lock, ArrowDown, ArrowLeft, CreditCard } from 'lucide-react';
 import { useAccount } from 'wagmi';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useConnectModal, useAccountModal, useChainModal } from '@rainbow-me/rainbowkit';
 import { translations } from './translations';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -130,87 +130,64 @@ const TrustCard = ({ t }: { t: any }) => (
 );
 
 const WalletConnectButton = ({ label }: { label: string }) => {
-  const { isConnected, address } = useAccount();
+  const { isConnected, address, chain } = useAccount();
+  const { openConnectModal } = useConnectModal();
+  const { openAccountModal } = useAccountModal();
+  const { openChainModal } = useChainModal();
 
+  const chainAny = chain as any;
+
+  // Not connected - show connect button
+  if (!isConnected) {
+    return (
+      <button
+        onClick={openConnectModal}
+        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full font-bold transition-all shadow-lg shadow-blue-200 hover:shadow-xl hover:shadow-blue-300 hover:scale-105 active:scale-95 cursor-pointer"
+      >
+        <Wallet className="w-5 h-5" />
+        {label}
+      </button>
+    );
+  }
+
+  // Connected but wrong network
+  if (chainAny?.unsupported) {
+    return (
+      <button
+        onClick={openChainModal}
+        className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-full font-bold transition-all text-sm cursor-pointer"
+      >
+        ⚠️ Wrong Network
+      </button>
+    );
+  }
+
+  // Connected - show account info
   return (
-    <ConnectButton.Custom>
-      {({
-        account,
-        chain,
-        openAccountModal,
-        openChainModal,
-        openConnectModal,
-        mounted,
-      }) => {
-        const ready = mounted;
-        const connected = ready && account && chain;
-
-        return (
-          <div
-            {...(!ready && {
-              'aria-hidden': true,
-              style: {
-                opacity: 0,
-                pointerEvents: 'none',
-                userSelect: 'none',
-              },
-            })}
-          >
-            {(() => {
-              if (!connected) {
-                return (
-                  <div className="flex justify-center">
-                    <button
-                      onClick={openConnectModal}
-                      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full font-bold transition-all shadow-lg shadow-blue-200 hover:shadow-xl hover:shadow-blue-300 hover:scale-105 active:scale-95"
-                    >
-                      <Wallet className="w-5 h-5" />
-                      {label}
-                    </button>
-                  </div>
-                );
-              }
-
-              if (chain.unsupported) {
-                return (
-                  <button
-                    onClick={openChainModal}
-                    className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-full font-bold transition-all text-sm"
-                  >
-                    Wrong network
-                  </button>
-                );
-              }
-
-              return (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={openChainModal}
-                    className="hidden sm:flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-full font-medium transition-all text-xs border border-slate-200"
-                  >
-                    {chain.hasIcon && chain.iconUrl && (
-                      <img
-                        alt={chain.name ?? 'Chain'}
-                        src={chain.iconUrl}
-                        className="w-4 h-4 rounded-full"
-                      />
-                    )}
-                    {chain.name}
-                  </button>
-                  <button
-                    onClick={openAccountModal}
-                    className="flex items-center gap-2 bg-green-50 hover:bg-green-100 text-green-700 px-4 py-2 rounded-full font-bold transition-all text-sm border border-green-200"
-                  >
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                    {account.displayName}
-                  </button>
-                </div>
-              );
-            })()}
-          </div>
-        );
-      }}
-    </ConnectButton.Custom>
+    <div className="flex items-center gap-2">
+      {chain && (
+        <button
+          onClick={openChainModal}
+          className="hidden sm:flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-full font-medium transition-all text-xs border border-slate-200 cursor-pointer"
+        >
+          {chainAny.iconUrl && (
+            <img
+              alt={chain.name ?? 'Chain'}
+              src={chainAny.iconUrl}
+              className="w-4 h-4 rounded-full"
+            />
+          )}
+          {chain.name}
+        </button>
+      )}
+      <button
+        onClick={openAccountModal}
+        className="flex items-center gap-2 bg-green-50 hover:bg-green-100 text-green-700 px-4 py-2 rounded-full font-bold transition-all text-sm border border-green-200 cursor-pointer"
+      >
+        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+        {address?.slice(0, 6)}...{address?.slice(-4)}
+      </button>
+    </div>
   );
 };
 
